@@ -66,14 +66,18 @@ async def show_product_detail(callback: CallbackQuery):
 
     in_stock = p["stock_qty"] > 0
     stock_text = f"✅ В наявності: {p['stock_qty']} шт" if in_stock else "❌ Немає в наявності"
+    brand_line = ("🏷 Бренд: " + p["brand_name"]) if p.get("brand_name") else ""
+    ingredients_line = ("\n🧪 Склад: " + p["ingredients"]) if p.get("ingredients") else ""
+    description = p.get("description", "")
+    volume = p.get("volume", "—")
     text = (
         f"<b>{p['name']}</b>\n"
-        f"{'🏷 Бренд: ' + p['brand_name'] if p.get('brand_name') else ''}\n"
-        f"📦 Об'єм: {p.get('volume','—')}\n"
+        f"{brand_line}\n"
+        f"📦 Обʼєм: {volume}\n"
         f"💰 Ціна: <b>{p['client_price']:.2f} грн</b>\n"
         f"{stock_text}\n\n"
-        f"{p.get('description','')}\n"
-        f"{'\n🧪 Склад: ' + p['ingredients'] if p.get('ingredients') else ''}"
+        f"{description}"
+        f"{ingredients_line}"
     )
 
     if p.get("photo_file_id"):
