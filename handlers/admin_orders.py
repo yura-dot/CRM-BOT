@@ -1,4 +1,5 @@
 from aiogram import Router, F
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import Message, CallbackQuery
 from models.database import get_db
 from keyboards.admin_kb import orders_filter_kb, order_status_kb
@@ -41,7 +42,10 @@ async def filter_orders(callback: CallbackQuery):
         orders = await cur.fetchall()
 
     if not orders:
+        try:
         await callback.message.edit_text("📭 Замовлень не знайдено.", reply_markup=orders_filter_kb())
+    except TelegramBadRequest:
+        pass
         return
 
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -53,10 +57,13 @@ async def filter_orders(callback: CallbackQuery):
             callback_data=f"admin_order_{o['id']}"
         )])
     buttons.append([InlineKeyboardButton(text="🔄 Фільтри", callback_data="admin_orders_filter")])
-    await callback.message.edit_text(
-        f"📋 <b>Замовлень: {len(orders)}</b>", parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
-    )
+    try:
+        await callback.message.edit_text(
+            f"📋 <b>Замовлень: {len(orders)}</b>", parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons)
+        )
+    except TelegramBadRequest:
+        pass
 
 @router.callback_query(F.data == "admin_orders_filter")
 async def show_filter(callback: CallbackQuery):
@@ -99,8 +106,11 @@ async def admin_order_detail(callback: CallbackQuery):
         f"{items_text}\n\n"
         f"💰 <b>Разом: {order['total_amount']:.2f} грн</b>"
     )
-    await callback.message.edit_text(text, parse_mode="HTML",
-                                     reply_markup=order_status_kb(order_id, order["status"]))
+    try:
+        await callback.message.edit_text(text, parse_mode="HTML",
+                                         reply_markup=order_status_kb(order_id, order["status"]))
+    except TelegramBadRequest:
+        await callback.answer("ℹ️ Вже актуально", show_alert=False)
 
 @router.callback_query(F.data.startswith("set_status_"))
 async def set_order_status(callback: CallbackQuery):

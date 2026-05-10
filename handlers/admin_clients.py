@@ -1,3 +1,4 @@
+from aiogram.exceptions import TelegramBadRequest
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from models.database import get_db
@@ -28,8 +29,11 @@ async def cb_admin_clients(callback: CallbackQuery):
     async with get_db() as db:
         cur = await db.execute("SELECT * FROM users WHERE role='client' ORDER BY is_approved, first_name")
         users = await cur.fetchall()
-    await callback.message.edit_text(f"👥 <b>Клієнти ({len(users)})</b>", parse_mode="HTML",
+    try:
+        await callback.message.edit_text(f"👥 <b>Клієнти ({len(users)})</b>", parse_mode="HTML",
                                      reply_markup=clients_admin_kb(users))
+    except TelegramBadRequest:
+        pass
 
 @router.callback_query(F.data.startswith("admin_client_"))
 async def admin_client_detail(callback: CallbackQuery):
@@ -49,8 +53,11 @@ async def admin_client_detail(callback: CallbackQuery):
         f"🏢 Компанія: {u.get('co_name') or '—'}\n"
         f"Статус: {approved_text}"
     )
-    await callback.message.edit_text(text, parse_mode="HTML",
+    try:
+        await callback.message.edit_text(text, parse_mode="HTML",
                                      reply_markup=client_admin_detail_kb(uid, bool(u["is_approved"]), companies))
+    except TelegramBadRequest:
+        pass
 
 @router.callback_query(F.data.startswith("approve_"))
 async def approve_client(callback: CallbackQuery):

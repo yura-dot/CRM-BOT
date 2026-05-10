@@ -1,3 +1,4 @@
+from aiogram.exceptions import TelegramBadRequest
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -31,8 +32,11 @@ async def cb_admin_products(callback: CallbackQuery):
     async with get_db() as db:
         cur = await db.execute("SELECT * FROM products WHERE is_active=1 ORDER BY name")
         products = await cur.fetchall()
-    await callback.message.edit_text(f"📦 <b>Товари ({len(products)})</b>:", parse_mode="HTML",
+    try:
+        await callback.message.edit_text(f"📦 <b>Товари ({len(products)})</b>:", parse_mode="HTML",
                                      reply_markup=products_admin_kb(products))
+    except TelegramBadRequest:
+        pass
 
 @router.callback_query(F.data.startswith("admin_prod_"))
 async def admin_product_detail(callback: CallbackQuery):
@@ -52,8 +56,11 @@ async def admin_product_detail(callback: CallbackQuery):
         f"📦 Залишок: <b>{p['stock_qty']} шт</b>\n"
         f"{'Опис: '+p['description'] if p.get('description') else ''}"
     )
-    await callback.message.edit_text(text, parse_mode="HTML",
+    try:
+        await callback.message.edit_text(text, parse_mode="HTML",
                                      reply_markup=product_admin_detail_kb(pid))
+    except TelegramBadRequest:
+        pass
 
 @router.callback_query(F.data == "add_product")
 async def start_add_product(callback: CallbackQuery, state: FSMContext):
@@ -246,7 +253,10 @@ async def edit_product_start(callback: CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="💬 Коментар", callback_data=f"epf_{prod_id}_comment")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data=f"admin_prod_{prod_id}")],
     ])
-    await callback.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
+    try:
+        await callback.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
+    except TelegramBadRequest:
+        pass
     await state.update_data(edit_prod_id=prod_id)
 
 

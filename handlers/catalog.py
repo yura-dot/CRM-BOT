@@ -1,3 +1,4 @@
+from aiogram.exceptions import TelegramBadRequest
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from models.database import get_db
@@ -30,7 +31,10 @@ async def cb_catalog(callback: CallbackQuery):
     async with get_db() as db:
         cur = await db.execute("SELECT * FROM categories ORDER BY name")
         cats = await cur.fetchall()
-    await callback.message.edit_text("📂 Оберіть категорію:", reply_markup=catalog_categories_kb(cats))
+    try:
+        await callback.message.edit_text("📂 Оберіть категорію:", reply_markup=catalog_categories_kb(cats))
+    except TelegramBadRequest:
+        pass
 
 @router.callback_query(F.data.startswith("cat_"))
 async def show_category_products(callback: CallbackQuery):
@@ -42,11 +46,17 @@ async def show_category_products(callback: CallbackQuery):
             cur = await db.execute("SELECT * FROM products WHERE is_active=1 AND category_id=? ORDER BY name", (cat_id,))
         products = await cur.fetchall()
     if not products:
-        await callback.message.edit_text("📭 Товарів у цій категорії немає.", reply_markup=product_list_kb([], cat_id))
+        try:
+            await callback.message.edit_text("📭 Товарів у цій категорії немає.", reply_markup=product_list_kb([], cat_id))
+        except TelegramBadRequest:
+            pass
         return
     text = f"🛍 Знайдено товарів: <b>{len(products)}</b>\nОберіть товар:"
-    await callback.message.edit_text(text, parse_mode="HTML",
+    try:
+        await callback.message.edit_text(text, parse_mode="HTML",
                                      reply_markup=product_list_kb(products, cat_id if cat_id != "all" else None))
+    except TelegramBadRequest:
+        pass
 
 @router.callback_query(F.data.startswith("prod_"))
 async def show_product_detail(callback: CallbackQuery):
@@ -83,8 +93,11 @@ async def show_product_detail(callback: CallbackQuery):
         )
         await callback.message.delete()
     else:
-        await callback.message.edit_text(text, parse_mode="HTML",
+        try:
+            await callback.message.edit_text(text, parse_mode="HTML",
                                          reply_markup=product_detail_kb(product_id, 1, in_stock))
+        except TelegramBadRequest:
+            pass
 
 @router.callback_query(F.data.startswith("qty_"))
 async def change_qty(callback: CallbackQuery):

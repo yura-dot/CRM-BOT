@@ -1,3 +1,4 @@
+from aiogram.exceptions import TelegramBadRequest
 from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
@@ -18,7 +19,10 @@ async def admin_settings(message: Message):
 
 @router.callback_query(F.data == "admin_settings")
 async def cb_admin_settings(callback: CallbackQuery):
-    await callback.message.edit_text("⚙️ <b>Налаштування</b>", parse_mode="HTML", reply_markup=settings_kb())
+    try:
+        await callback.message.edit_text("⚙️ <b>Налаштування</b>", parse_mode="HTML", reply_markup=settings_kb())
+    except TelegramBadRequest:
+        pass
 
 # ── FOP Settings ──
 @router.callback_query(F.data == "fop_settings")
@@ -36,10 +40,13 @@ async def show_fop_settings(callback: CallbackQuery):
         f"📍 Адреса: {fop.get('legal_address') or '—'}\n"
         f"📱 Телефон: {fop.get('phone') or '—'}"
     )
-    await callback.message.edit_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+    try:
+        await callback.message.edit_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✏️ Редагувати реквізити", callback_data="edit_fop")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_settings")],
     ]))
+    except TelegramBadRequest:
+        pass
 
 @router.callback_query(F.data == "edit_fop")
 async def edit_fop_start(callback: CallbackQuery, state: FSMContext):
@@ -97,7 +104,10 @@ async def admin_companies(callback: CallbackQuery):
     async with get_db() as db:
         cur = await db.execute("SELECT * FROM companies ORDER BY name")
         companies = await cur.fetchall()
-    await callback.message.edit_text("🏢 <b>Компанії</b>", parse_mode="HTML", reply_markup=companies_kb(companies))
+    try:
+        await callback.message.edit_text("🏢 <b>Компанії</b>", parse_mode="HTML", reply_markup=companies_kb(companies))
+    except TelegramBadRequest:
+        pass
 
 @router.callback_query(F.data == "add_company")
 async def add_company_start(callback: CallbackQuery, state: FSMContext):
@@ -171,7 +181,10 @@ async def admin_brands(callback: CallbackQuery):
     async with get_db() as db:
         cur = await db.execute("SELECT * FROM brands ORDER BY name")
         brands = await cur.fetchall()
-    await callback.message.edit_text("🏷 <b>Бренди</b>", parse_mode="HTML", reply_markup=brands_kb(brands))
+    try:
+        await callback.message.edit_text("🏷 <b>Бренди</b>", parse_mode="HTML", reply_markup=brands_kb(brands))
+    except TelegramBadRequest:
+        pass
 
 @router.callback_query(F.data == "add_brand")
 async def add_brand_start(callback: CallbackQuery, state: FSMContext):
@@ -193,7 +206,10 @@ async def admin_categories(callback: CallbackQuery):
     async with get_db() as db:
         cur = await db.execute("SELECT * FROM categories ORDER BY name")
         cats = await cur.fetchall()
-    await callback.message.edit_text("📂 <b>Категорії</b>", parse_mode="HTML", reply_markup=categories_kb(cats))
+    try:
+        await callback.message.edit_text("📂 <b>Категорії</b>", parse_mode="HTML", reply_markup=categories_kb(cats))
+    except TelegramBadRequest:
+        pass
 
 @router.callback_query(F.data == "add_category")
 async def add_category_start(callback: CallbackQuery, state: FSMContext):
