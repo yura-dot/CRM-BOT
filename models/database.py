@@ -1,10 +1,13 @@
 import aiosqlite
 import os
+from contextlib import asynccontextmanager
 
-DB_PATH = "supercrm.db"
+DB_PATH = os.getenv("DB_PATH", "supercrm.db")
 
+@asynccontextmanager
 async def get_db():
-    return await aiosqlite.connect(DB_PATH)
+    async with aiosqlite.connect(DB_PATH) as db:
+        yield db
 
 async def init_db():
     async with aiosqlite.connect(DB_PATH) as db:
@@ -25,7 +28,6 @@ async def init_db():
             company_id INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-
         CREATE TABLE IF NOT EXISTS companies (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -41,7 +43,6 @@ async def init_db():
             region TEXT,
             postal_code TEXT
         );
-
         CREATE TABLE IF NOT EXISTS fop_settings (
             id INTEGER PRIMARY KEY DEFAULT 1,
             fop_name TEXT,
@@ -52,19 +53,16 @@ async def init_db():
             phone TEXT,
             payment_template TEXT DEFAULT 'Оплата за замовленням №{order_number}'
         );
-
         CREATE TABLE IF NOT EXISTS brands (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             logo_file_id TEXT
         );
-
         CREATE TABLE IF NOT EXISTS categories (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             description TEXT
         );
-
         CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -81,7 +79,6 @@ async def init_db():
             category_id INTEGER,
             is_active INTEGER DEFAULT 1
         );
-
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             order_number TEXT UNIQUE NOT NULL,
@@ -95,7 +92,6 @@ async def init_db():
             invoice_requested INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-
         CREATE TABLE IF NOT EXISTS order_items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             order_id INTEGER NOT NULL,
@@ -104,7 +100,6 @@ async def init_db():
             unit_price REAL NOT NULL,
             subtotal REAL NOT NULL
         );
-
         CREATE TABLE IF NOT EXISTS invoices (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             invoice_number TEXT UNIQUE NOT NULL,
@@ -116,7 +111,6 @@ async def init_db():
             notes TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-
         INSERT OR IGNORE INTO fop_settings (id) VALUES (1);
         """)
         await db.commit()

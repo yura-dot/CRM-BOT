@@ -13,7 +13,6 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
 
-# Простий HTTP сервер щоб Render думав що сервіс живий
 async def health(request):
     return web.Response(text="SuperCRM Bot is running!")
 
@@ -34,7 +33,6 @@ async def main():
         raise ValueError("BOT_TOKEN не вказано у .env файлі!")
 
     await init_db()
-    logger.info("✅ База даних ініціалізована")
 
     bot = Bot(token=token)
     dp = Dispatcher(storage=MemoryStorage())
@@ -50,7 +48,10 @@ async def main():
     dp.include_router(admin_settings.router)
     dp.include_router(admin_invoice.router)
 
-    # Запускаємо HTTP сервер і бота одночасно
+    # Скидаємо webhook і чекаємо щоб попередній polling завершився
+    await bot.delete_webhook(drop_pending_updates=True)
+    await asyncio.sleep(2)
+
     await start_web()
     logger.info("🚀 SuperCRM Bot запущено!")
     await dp.start_polling(bot, skip_updates=True)

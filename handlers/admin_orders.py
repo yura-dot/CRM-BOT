@@ -27,7 +27,7 @@ async def filter_orders(callback: CallbackQuery):
     }
     filter_key = status_map.get(callback.data)
 
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         if filter_key == "invoice_req":
             cur = await db.execute("""SELECT o.*, u.first_name, u.last_name FROM orders o
@@ -65,7 +65,7 @@ async def show_filter(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("admin_order_"))
 async def admin_order_detail(callback: CallbackQuery):
     order_id = int(callback.data.split("_")[2])
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("""SELECT o.*, u.first_name, u.last_name, u.phone, u.email,
             co.name as co_name FROM orders o
@@ -102,7 +102,7 @@ async def set_order_status(callback: CallbackQuery):
     order_id = int(parts[2])
     new_status = parts[3]
 
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         await db.execute("UPDATE orders SET status=? WHERE id=?", (new_status, order_id))
         await db.commit()

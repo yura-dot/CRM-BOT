@@ -7,7 +7,7 @@ import aiosqlite
 router = Router()
 
 async def get_approved_user(tg_id):
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM users WHERE telegram_id=? AND is_approved=1", (tg_id,))
         return await cur.fetchone()
@@ -18,7 +18,7 @@ async def show_catalog(message: Message):
     if not user:
         await message.answer("⛔ Доступ закрито. Очікуйте підтвердження адміністратора.")
         return
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM categories ORDER BY name")
         cats = [dict(r) for r in await cur.fetchall()]
@@ -29,7 +29,7 @@ async def show_catalog(message: Message):
 
 @router.callback_query(F.data == "catalog")
 async def cb_catalog(callback: CallbackQuery):
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM categories ORDER BY name")
         cats = [dict(r) for r in await cur.fetchall()]
@@ -38,7 +38,7 @@ async def cb_catalog(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("cat_"))
 async def show_category_products(callback: CallbackQuery):
     cat_id = callback.data.split("_")[1]
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         if cat_id == "all":
             cur = await db.execute("SELECT * FROM products WHERE is_active=1 ORDER BY name")
@@ -55,7 +55,7 @@ async def show_category_products(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("prod_"))
 async def show_product_detail(callback: CallbackQuery):
     product_id = int(callback.data.split("_")[1])
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("""SELECT p.*, b.name as brand_name, c.name as cat_name
             FROM products p
@@ -98,7 +98,7 @@ async def change_qty(callback: CallbackQuery):
     product_id = int(parts[2])
     qty = int(parts[3])
 
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT stock_qty FROM products WHERE id=?", (product_id,))
         p = await cur.fetchone()

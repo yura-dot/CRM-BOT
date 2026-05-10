@@ -13,7 +13,7 @@ ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
 async def admin_products(message: Message):
     if message.from_user.id not in ADMIN_IDS:
         return
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM products WHERE is_active=1 ORDER BY name")
         products = [dict(r) for r in await cur.fetchall()]
@@ -29,7 +29,7 @@ async def admin_products(message: Message):
 
 @router.callback_query(F.data == "admin_products")
 async def cb_admin_products(callback: CallbackQuery):
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM products WHERE is_active=1 ORDER BY name")
         products = [dict(r) for r in await cur.fetchall()]
@@ -39,7 +39,7 @@ async def cb_admin_products(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("admin_prod_"))
 async def admin_product_detail(callback: CallbackQuery):
     pid = int(callback.data.split("_")[2])
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("""SELECT p.*, b.name as brand_name, c.name as cat_name FROM products p
             LEFT JOIN brands b ON p.brand_id=b.id
@@ -72,7 +72,7 @@ async def ap_name(message: Message, state: FSMContext):
 @router.message(AddProductStates.sku)
 async def ap_sku(message: Message, state: FSMContext):
     sku = message.text.strip()
-    async with await get_db() as db:
+    async with get_db() as db:
         cur = await db.execute("SELECT id FROM products WHERE sku=?", (sku,))
         if await cur.fetchone():
             await message.answer("❌ Такий артикул вже існує. Введіть інший:")
@@ -142,7 +142,7 @@ async def ap_stock(message: Message, state: FSMContext):
     except ValueError:
         await message.answer("❌ Введіть ціле число:")
         return
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM brands ORDER BY name")
         brands = [dict(r) for r in await cur.fetchall()]
@@ -160,7 +160,7 @@ async def ap_brand(callback: CallbackQuery, state: FSMContext):
     await _ask_category(callback.message, state)
 
 async def _ask_category(message, state):
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM categories ORDER BY name")
         cats = [dict(r) for r in await cur.fetchall()]
@@ -179,7 +179,7 @@ async def ap_category(callback: CallbackQuery, state: FSMContext):
 
 async def _save_product(message, state):
     data = await state.get_data()
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("""INSERT INTO products
             (name,sku,photo_file_id,description,ingredients,volume,client_price,purchase_price,stock_qty,brand_id,category_id,comment)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
@@ -210,7 +210,7 @@ async def update_stock_value(message: Message, state: FSMContext):
     if not pid:
         return
     qty = int(message.text)
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("UPDATE products SET stock_qty=? WHERE id=?", (qty, pid))
         await db.commit()
     await state.clear()
@@ -219,7 +219,7 @@ async def update_stock_value(message: Message, state: FSMContext):
 @router.callback_query(F.data.startswith("del_prod_"))
 async def delete_product(callback: CallbackQuery):
     pid = int(callback.data.split("_")[2])
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("UPDATE products SET is_active=0 WHERE id=?", (pid,))
         await db.commit()
     await callback.answer("🗑 Товар видалено", show_alert=False)

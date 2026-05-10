@@ -9,7 +9,7 @@ router = Router()
 
 @router.message(F.text == "📦 Мої замовлення")
 async def my_orders(message: Message):
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT id FROM users WHERE telegram_id=?", (message.from_user.id,))
         u = await cur.fetchone()
@@ -26,7 +26,7 @@ async def my_orders(message: Message):
 
 @router.callback_query(F.data == "my_orders")
 async def cb_my_orders(callback: CallbackQuery):
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT id FROM users WHERE telegram_id=?", (callback.from_user.id,))
         u = await cur.fetchone()
@@ -37,7 +37,7 @@ async def cb_my_orders(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("order_"))
 async def order_detail(callback: CallbackQuery):
     order_id = int(callback.data.split("_")[1])
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM orders WHERE id=?", (order_id,))
         order = dict(await cur.fetchone())
@@ -68,7 +68,7 @@ async def order_detail(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("req_invoice_"))
 async def request_invoice(callback: CallbackQuery):
     order_id = int(callback.data.split("_")[2])
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("UPDATE orders SET invoice_requested=1 WHERE id=?", (order_id,))
         await db.commit()
         cur = await db.execute("SELECT order_number FROM orders WHERE id=?", (order_id,))
@@ -91,7 +91,7 @@ async def request_invoice(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("view_invoice_"))
 async def view_invoice(callback: CallbackQuery):
     order_id = int(callback.data.split("_")[2])
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM invoices WHERE order_id=?", (order_id,))
         inv = await cur.fetchone()

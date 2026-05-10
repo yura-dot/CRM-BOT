@@ -11,7 +11,7 @@ ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
 async def admin_clients(message: Message):
     if message.from_user.id not in ADMIN_IDS:
         return
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM users WHERE role='client' ORDER BY is_approved, first_name")
         users = [dict(r) for r in await cur.fetchall()]
@@ -26,7 +26,7 @@ async def admin_clients(message: Message):
 
 @router.callback_query(F.data == "admin_clients")
 async def cb_admin_clients(callback: CallbackQuery):
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM users WHERE role='client' ORDER BY is_approved, first_name")
         users = [dict(r) for r in await cur.fetchall()]
@@ -36,7 +36,7 @@ async def cb_admin_clients(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("admin_client_"))
 async def admin_client_detail(callback: CallbackQuery):
     uid = int(callback.data.split("_")[2])
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("""SELECT u.*, co.name as co_name FROM users u
             LEFT JOIN companies co ON u.company_id=co.id WHERE u.id=?""", (uid,))
@@ -58,7 +58,7 @@ async def admin_client_detail(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("approve_"))
 async def approve_client(callback: CallbackQuery):
     uid = int(callback.data.split("_")[1])
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         await db.execute("UPDATE users SET is_approved=1 WHERE id=?", (uid,))
         await db.commit()
@@ -80,7 +80,7 @@ async def approve_client(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("disapprove_"))
 async def disapprove_client(callback: CallbackQuery):
     uid = int(callback.data.split("_")[1])
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("UPDATE users SET is_approved=0 WHERE id=?", (uid,))
         await db.commit()
     await callback.answer("🚫 Доступ відкликано", show_alert=False)
@@ -91,7 +91,7 @@ async def assign_company(callback: CallbackQuery):
     parts = callback.data.split("_")
     uid = int(parts[2])
     co_id = int(parts[3])
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("UPDATE users SET company_id=? WHERE id=?", (co_id, uid))
         await db.commit()
     await callback.answer("✅ Компанію призначено!", show_alert=False)

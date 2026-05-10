@@ -14,7 +14,7 @@ router = Router()
 @router.callback_query(F.data.startswith("create_invoice_"))
 async def create_invoice_start(callback: CallbackQuery, state: FSMContext):
     order_id = int(callback.data.split("_")[2])
-    async with await get_db() as db:
+    async with get_db() as db:
         cur = await db.execute("SELECT id FROM invoices WHERE order_id=?", (order_id,))
         existing = await cur.fetchone()
     if existing:
@@ -48,7 +48,7 @@ async def _generate_and_send_invoice(message, order_id: int, data: dict):
     inv_number = generate_invoice_number()
     today = date.today().strftime("%d.%m.%Y")
 
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("""SELECT o.*, u.first_name, u.last_name, u.phone, u.email, u.company_id
             FROM orders o JOIN users u ON o.user_id=u.id WHERE o.id=?""", (order_id,))
@@ -108,7 +108,7 @@ async def _generate_and_send_invoice(message, order_id: int, data: dict):
 @router.callback_query(F.data.startswith("inv_sent_"))
 async def inv_mark_sent(callback: CallbackQuery):
     inv_id = int(callback.data.split("_")[2])
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("UPDATE invoices SET status='sent' WHERE id=?", (inv_id,))
         await db.commit()
     await callback.answer("📤 Статус: Відправлений", show_alert=False)
@@ -116,7 +116,7 @@ async def inv_mark_sent(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("inv_paid_"))
 async def inv_mark_paid(callback: CallbackQuery):
     inv_id = int(callback.data.split("_")[2])
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("UPDATE invoices SET status='paid' WHERE id=?", (inv_id,))
         await db.commit()
     await callback.answer("✅ Статус: Оплачений", show_alert=False)

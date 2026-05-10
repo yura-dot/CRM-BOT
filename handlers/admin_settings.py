@@ -22,7 +22,7 @@ async def cb_admin_settings(callback: CallbackQuery):
 # ── FOP Settings ──
 @router.callback_query(F.data == "fop_settings")
 async def show_fop_settings(callback: CallbackQuery):
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM fop_settings WHERE id=1")
         fop = dict(await cur.fetchone())
@@ -83,7 +83,7 @@ async def fop_phone(message: Message, state: FSMContext):
     if message.text != "/skip":
         await state.update_data(phone=message.text.strip())
     data = await state.get_data()
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("""UPDATE fop_settings SET fop_name=?,iban=?,edrpou=?,bank_name=?,legal_address=?,phone=? WHERE id=1""",
             (data.get("fop_name"), data.get("iban"), data.get("edrpou"),
              data.get("bank_name"), data.get("legal_address"), data.get("phone")))
@@ -94,7 +94,7 @@ async def fop_phone(message: Message, state: FSMContext):
 # ── Companies ──
 @router.callback_query(F.data == "admin_companies")
 async def admin_companies(callback: CallbackQuery):
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM companies ORDER BY name")
         companies = [dict(r) for r in await cur.fetchall()]
@@ -157,7 +157,7 @@ async def co_phone(message: Message, state: FSMContext):
     if message.text != "/skip":
         await state.update_data(phone=message.text.strip())
     data = await state.get_data()
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("""INSERT INTO companies (name,city,iban,display_name,edrpou,legal_address,director,phone)
             VALUES (?,?,?,?,?,?,?,?)""",
             (data["name"], data.get("city"), data.get("iban"), data.get("display_name"),
@@ -169,7 +169,7 @@ async def co_phone(message: Message, state: FSMContext):
 # ── Brands ──
 @router.callback_query(F.data == "admin_brands")
 async def admin_brands(callback: CallbackQuery):
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM brands ORDER BY name")
         brands = [dict(r) for r in await cur.fetchall()]
@@ -183,7 +183,7 @@ async def add_brand_start(callback: CallbackQuery, state: FSMContext):
 @router.message(AddBrandStates.name)
 async def brand_name(message: Message, state: FSMContext):
     name = message.text.strip()
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("INSERT INTO brands (name) VALUES (?)", (name,))
         await db.commit()
     await state.clear()
@@ -192,7 +192,7 @@ async def brand_name(message: Message, state: FSMContext):
 # ── Categories ──
 @router.callback_query(F.data == "admin_categories")
 async def admin_categories(callback: CallbackQuery):
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM categories ORDER BY name")
         cats = [dict(r) for r in await cur.fetchall()]
@@ -206,7 +206,7 @@ async def add_category_start(callback: CallbackQuery, state: FSMContext):
 @router.message(AddCategoryStates.name)
 async def category_name(message: Message, state: FSMContext):
     name = message.text.strip()
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("INSERT INTO categories (name) VALUES (?)", (name,))
         await db.commit()
     await state.clear()

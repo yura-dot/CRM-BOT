@@ -15,13 +15,13 @@ ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
 @router.message(CommandStart())
 async def cmd_start(message: Message, state: FSMContext):
     tg_id = message.from_user.id
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = __import__("aiosqlite").Row
         cur = await db.execute("SELECT * FROM users WHERE telegram_id=?", (tg_id,))
         user = await cur.fetchone()
 
     if tg_id in ADMIN_IDS:
-        async with await get_db() as db:
+        async with get_db() as db:
             await db.execute("""INSERT OR IGNORE INTO users (telegram_id,first_name,last_name,email,role,is_approved,accepted_terms)
                 VALUES (?,?,?,?,'admin',1,1)""",
                 (tg_id, message.from_user.first_name or "Admin", message.from_user.last_name or "", f"admin_{tg_id}@supercrm.local"))
@@ -60,7 +60,7 @@ async def reg_email(message: Message, state: FSMContext):
     if not is_valid_email(email):
         await message.answer("❌ Невірний формат email. Спробуйте ще раз:")
         return
-    async with await get_db() as db:
+    async with get_db() as db:
         cur = await db.execute("SELECT id FROM users WHERE email=?", (email,))
         if await cur.fetchone():
             await message.answer("❌ Цей email вже зареєстрований. Введіть інший:")
@@ -85,7 +85,7 @@ async def reg_phone(message: Message, state: FSMContext):
 async def reg_accept(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     tg_id = callback.from_user.id
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("""INSERT INTO users (telegram_id,first_name,last_name,email,phone,role,is_approved,accepted_terms)
             VALUES (?,?,?,?,?,'client',0,1)""",
             (tg_id, data["first_name"], data["last_name"], data["email"], data.get("phone","")))

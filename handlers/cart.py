@@ -16,7 +16,7 @@ async def add_to_cart(callback: CallbackQuery):
     qty = int(parts[3])
     tg_id = callback.from_user.id
 
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT name, client_price, stock_qty FROM products WHERE id=?", (product_id,))
         p = dict(await cur.fetchone())
@@ -40,7 +40,7 @@ async def show_cart(message: Message):
 async def _render_cart(message_or_cb, tg_id, cart):
     items = []
     total = 0
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         for pid, qty in cart.items():
             cur = await db.execute("SELECT id, name, client_price FROM products WHERE id=?", (pid,))
@@ -71,7 +71,7 @@ async def cart_minus(callback: CallbackQuery):
 async def cart_plus(callback: CallbackQuery):
     pid = int(callback.data.split("_")[2])
     tg_id = callback.from_user.id
-    async with await get_db() as db:
+    async with get_db() as db:
         cur = await db.execute("SELECT stock_qty FROM products WHERE id=?", (pid,))
         p = await cur.fetchone()
     max_qty = p[0] if p else 99
@@ -109,7 +109,7 @@ async def checkout(callback: CallbackQuery):
         await callback.answer("Кошик порожній!", show_alert=True)
         return
 
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM users WHERE telegram_id=?", (tg_id,))
         user = dict(await cur.fetchone())
@@ -122,7 +122,7 @@ async def checkout(callback: CallbackQuery):
 
     total = 0
     items_text = ""
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         for pid, qty in cart.items():
             cur = await db.execute("SELECT name, client_price FROM products WHERE id=?", (pid,))
@@ -157,7 +157,7 @@ async def confirm_order(callback: CallbackQuery):
         await callback.answer("Кошик порожній!", show_alert=True)
         return
 
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute("SELECT * FROM users WHERE telegram_id=?", (tg_id,))
         user = dict(await cur.fetchone())
@@ -167,7 +167,7 @@ async def confirm_order(callback: CallbackQuery):
     order_number = generate_order_number()
     total = 0
     items_data = []
-    async with await get_db() as db:
+    async with get_db() as db:
         db.row_factory = aiosqlite.Row
         for pid, qty in cart.items():
             cur = await db.execute("SELECT name, client_price, stock_qty FROM products WHERE id=?", (pid,))
@@ -176,7 +176,7 @@ async def confirm_order(callback: CallbackQuery):
             total += sub
             items_data.append({"pid": pid, "qty": qty, "price": p["client_price"], "sub": sub, "name": p["name"]})
 
-    async with await get_db() as db:
+    async with get_db() as db:
         await db.execute("""INSERT INTO orders (order_number,user_id,status,total_amount,np_city,np_branch,np_recipient)
             VALUES (?,?,'new',?,?,?,?)""",
             (order_number, user["id"], total,
