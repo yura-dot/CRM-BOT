@@ -15,6 +15,7 @@ async def admin_settings(message: Message):
         return
     await message.answer("⚙️ <b>Налаштування</b>", parse_mode="HTML", reply_markup=settings_kb())
 
+
 @router.callback_query(F.data == "admin_settings")
 async def cb_admin_settings(callback: CallbackQuery):
     await callback.message.edit_text("⚙️ <b>Налаштування</b>", parse_mode="HTML", reply_markup=settings_kb())

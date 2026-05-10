@@ -96,3 +96,24 @@ async def assign_company(callback: CallbackQuery):
         await db.commit()
     await callback.answer("✅ Компанію призначено!", show_alert=False)
     await admin_client_detail(callback)
+
+@router.message(F.text == "🏢 Компанії")
+async def admin_companies_msg(message: Message):
+    if message.from_user.id not in ADMIN_IDS:
+        return
+    from keyboards.admin_kb import companies_kb
+    async with get_db() as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute("SELECT * FROM companies ORDER BY name")
+        companies = [dict(r) for r in await cur.fetchall()]
+    if not companies:
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        await message.answer(
+            "🏢 <b>Компанії</b>\n\nКомпаній ще немає.",
+            parse_mode="HTML",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="➕ Додати компанію", callback_data="add_company")]
+            ])
+        )
+        return
+    await message.answer("🏢 <b>Компанії</b>", parse_mode="HTML", reply_markup=companies_kb(companies))
