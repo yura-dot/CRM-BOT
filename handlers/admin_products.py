@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from models.database import get_db
 from keyboards.admin_kb import products_admin_kb, product_admin_detail_kb, select_brand_kb, select_category_kb
 from utils.states import AddProductStates
-import aiosqlite, os
+import os
 
 router = Router()
 ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
@@ -14,9 +14,9 @@ async def admin_products(message: Message):
     if message.from_user.id not in ADMIN_IDS:
         return
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM products WHERE is_active=1 ORDER BY name")
-        products = [dict(r) for r in await cur.fetchall()]
+        products = await cur.fetchall()
     if not products:
         from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
         await message.answer("📭 Товарів ще немає.",
@@ -30,9 +30,9 @@ async def admin_products(message: Message):
 @router.callback_query(F.data == "admin_products")
 async def cb_admin_products(callback: CallbackQuery):
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM products WHERE is_active=1 ORDER BY name")
-        products = [dict(r) for r in await cur.fetchall()]
+        products = await cur.fetchall()
     await callback.message.edit_text(f"📦 <b>Товари ({len(products)})</b>:", parse_mode="HTML",
                                      reply_markup=products_admin_kb(products))
 
@@ -40,11 +40,11 @@ async def cb_admin_products(callback: CallbackQuery):
 async def admin_product_detail(callback: CallbackQuery):
     pid = int(callback.data.split("_")[2])
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("""SELECT p.*, b.name as brand_name, c.name as cat_name FROM products p
             LEFT JOIN brands b ON p.brand_id=b.id
             LEFT JOIN categories c ON p.category_id=c.id WHERE p.id=?""", (pid,))
-        p = dict(await cur.fetchone())
+        p = await cur.fetchone()
     text = (
         f"📦 <b>{p['name']}</b>\n"
         f"Артикул: {p['sku']}\n"
@@ -143,9 +143,9 @@ async def ap_stock(message: Message, state: FSMContext):
         await message.answer("❌ Введіть ціле число:")
         return
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM brands ORDER BY name")
-        brands = [dict(r) for r in await cur.fetchall()]
+        brands = await cur.fetchall()
     if brands:
         await message.answer("Оберіть <b>бренд</b>:", parse_mode="HTML", reply_markup=select_brand_kb(brands))
         await state.set_state(AddProductStates.brand)
@@ -161,9 +161,9 @@ async def ap_brand(callback: CallbackQuery, state: FSMContext):
 
 async def _ask_category(message, state):
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM categories ORDER BY name")
-        cats = [dict(r) for r in await cur.fetchall()]
+        cats = await cur.fetchall()
     if cats:
         await message.answer("Оберіть <b>категорію</b>:", parse_mode="HTML", reply_markup=select_category_kb(cats))
         await state.set_state(AddProductStates.category)

@@ -5,7 +5,7 @@ from models.database import get_db
 from utils.states import EditProfileStates
 from keyboards.client_kb import main_menu_kb
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-import aiosqlite
+
 
 router = Router()
 
@@ -18,10 +18,10 @@ def profile_kb():
 @router.message(F.text == "👤 Профіль")
 async def show_profile(message: Message):
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("""SELECT u.*, co.name as co_name FROM users u
             LEFT JOIN companies co ON u.company_id=co.id WHERE u.telegram_id=?""", (message.from_user.id,))
-        u = dict(await cur.fetchone())
+        u = await cur.fetchone()
 
     np_block = ""
     if u.get("np_city"):
@@ -63,9 +63,9 @@ async def edit_phone(message: Message, state: FSMContext):
     data = await state.get_data()
     tg_id = message.from_user.id
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM users WHERE telegram_id=?", (tg_id,))
-        current = dict(await cur.fetchone())
+        current = await cur.fetchone()
         await db.execute("""UPDATE users SET first_name=?, last_name=?, phone=? WHERE telegram_id=?""",
             (data.get("first_name", current["first_name"]),
              data.get("last_name", current["last_name"]),

@@ -2,7 +2,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from models.database import get_db
 from keyboards.admin_kb import clients_admin_kb, client_admin_detail_kb
-import aiosqlite, os
+import os
 
 router = Router()
 ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
@@ -12,9 +12,9 @@ async def admin_clients(message: Message):
     if message.from_user.id not in ADMIN_IDS:
         return
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM users WHERE role='client' ORDER BY is_approved, first_name")
-        users = [dict(r) for r in await cur.fetchall()]
+        users = await cur.fetchall()
     if not users:
         await message.answer("👥 Клієнтів ще немає.")
         return
@@ -27,9 +27,9 @@ async def admin_clients(message: Message):
 @router.callback_query(F.data == "admin_clients")
 async def cb_admin_clients(callback: CallbackQuery):
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM users WHERE role='client' ORDER BY is_approved, first_name")
-        users = [dict(r) for r in await cur.fetchall()]
+        users = await cur.fetchall()
     await callback.message.edit_text(f"👥 <b>Клієнти ({len(users)})</b>", parse_mode="HTML",
                                      reply_markup=clients_admin_kb(users))
 
@@ -37,12 +37,12 @@ async def cb_admin_clients(callback: CallbackQuery):
 async def admin_client_detail(callback: CallbackQuery):
     uid = int(callback.data.split("_")[2])
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("""SELECT u.*, co.name as co_name FROM users u
             LEFT JOIN companies co ON u.company_id=co.id WHERE u.id=?""", (uid,))
-        u = dict(await cur.fetchone())
+        u = await cur.fetchone()
         cur2 = await db.execute("SELECT * FROM companies ORDER BY name")
-        companies = [dict(r) for r in await cur2.fetchall()]
+        companies = await cur2.fetchall()
 
     approved_text = "✅ Підтверджений" if u["is_approved"] else "⏳ Очікує підтвердження"
     text = (
@@ -59,11 +59,11 @@ async def admin_client_detail(callback: CallbackQuery):
 async def approve_client(callback: CallbackQuery):
     uid = int(callback.data.split("_")[1])
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         await db.execute("UPDATE users SET is_approved=1 WHERE id=?", (uid,))
         await db.commit()
         cur = await db.execute("SELECT telegram_id, first_name FROM users WHERE id=?", (uid,))
-        u = dict(await cur.fetchone())
+        u = await cur.fetchone()
     try:
         await callback.bot.send_message(
             u["telegram_id"],
@@ -103,9 +103,9 @@ async def admin_companies_msg(message: Message):
         return
     from keyboards.admin_kb import companies_kb
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM companies ORDER BY name")
-        companies = [dict(r) for r in await cur.fetchall()]
+        companies = await cur.fetchall()
     if not companies:
         from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
         await message.answer(

@@ -3,7 +3,7 @@ from aiogram.types import Message, CallbackQuery
 from models.database import get_db
 from keyboards.admin_kb import orders_filter_kb, order_status_kb
 from utils.helpers import format_status
-import aiosqlite, os
+import os
 
 router = Router()
 ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
@@ -28,7 +28,7 @@ async def filter_orders(callback: CallbackQuery):
     filter_key = status_map.get(callback.data)
 
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         if filter_key == "invoice_req":
             cur = await db.execute("""SELECT o.*, u.first_name, u.last_name FROM orders o
                 JOIN users u ON o.user_id=u.id WHERE o.invoice_requested=1 ORDER BY o.created_at DESC""")
@@ -38,7 +38,7 @@ async def filter_orders(callback: CallbackQuery):
         else:
             cur = await db.execute("""SELECT o.*, u.first_name, u.last_name FROM orders o
                 JOIN users u ON o.user_id=u.id ORDER BY o.created_at DESC LIMIT 50""")
-        orders = [dict(r) for r in await cur.fetchall()]
+        orders = await cur.fetchall()
 
     if not orders:
         await callback.message.edit_text("📭 Замовлень не знайдено.", reply_markup=orders_filter_kb())
@@ -66,16 +66,16 @@ async def show_filter(callback: CallbackQuery):
 async def admin_order_detail(callback: CallbackQuery):
     order_id = int(callback.data.split("_")[2])
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("""SELECT o.*, u.first_name, u.last_name, u.phone, u.email,
             co.name as co_name FROM orders o
             JOIN users u ON o.user_id=u.id
             LEFT JOIN companies co ON u.company_id=co.id
             WHERE o.id=?""", (order_id,))
-        order = dict(await cur.fetchone())
+        order = await cur.fetchone()
         cur2 = await db.execute("""SELECT oi.*, p.name, p.sku FROM order_items oi
             JOIN products p ON oi.product_id=p.id WHERE oi.order_id=?""", (order_id,))
-        items = [dict(r) for r in await cur2.fetchall()]
+        items = await cur2.fetchall()
 
     items_text = "\n".join([f"  • {i['name']} [{i['sku']}] × {i['quantity']} = {i['subtotal']:.2f} грн" for i in items])
     np_text = ""
@@ -103,12 +103,12 @@ async def set_order_status(callback: CallbackQuery):
     new_status = parts[3]
 
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         await db.execute("UPDATE orders SET status=? WHERE id=?", (new_status, order_id))
         await db.commit()
         cur = await db.execute("""SELECT o.order_number, u.telegram_id, u.first_name FROM orders o
             JOIN users u ON o.user_id=u.id WHERE o.id=?""", (order_id,))
-        row = dict(await cur.fetchone())
+        row = await cur.fetchone()
 
     status_messages = {
         "new": "🔵 Ваше замовлення отримано",

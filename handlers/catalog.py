@@ -2,13 +2,13 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from models.database import get_db
 from keyboards.client_kb import catalog_categories_kb, product_list_kb, product_detail_kb
-import aiosqlite
+
 
 router = Router()
 
 async def get_approved_user(tg_id):
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM users WHERE telegram_id=? AND is_approved=1", (tg_id,))
         return await cur.fetchone()
 
@@ -19,9 +19,9 @@ async def show_catalog(message: Message):
         await message.answer("⛔ Доступ закрито. Очікуйте підтвердження адміністратора.")
         return
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM categories ORDER BY name")
-        cats = [dict(r) for r in await cur.fetchall()]
+        cats = await cur.fetchall()
     if not cats:
         await message.answer("📭 Каталог поки порожній.")
         return
@@ -30,21 +30,21 @@ async def show_catalog(message: Message):
 @router.callback_query(F.data == "catalog")
 async def cb_catalog(callback: CallbackQuery):
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM categories ORDER BY name")
-        cats = [dict(r) for r in await cur.fetchall()]
+        cats = await cur.fetchall()
     await callback.message.edit_text("📂 Оберіть категорію:", reply_markup=catalog_categories_kb(cats))
 
 @router.callback_query(F.data.startswith("cat_"))
 async def show_category_products(callback: CallbackQuery):
     cat_id = callback.data.split("_")[1]
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         if cat_id == "all":
             cur = await db.execute("SELECT * FROM products WHERE is_active=1 ORDER BY name")
         else:
             cur = await db.execute("SELECT * FROM products WHERE is_active=1 AND category_id=? ORDER BY name", (cat_id,))
-        products = [dict(r) for r in await cur.fetchall()]
+        products = await cur.fetchall()
     if not products:
         await callback.message.edit_text("📭 Товарів у цій категорії немає.", reply_markup=product_list_kb([], cat_id))
         return
@@ -56,13 +56,13 @@ async def show_category_products(callback: CallbackQuery):
 async def show_product_detail(callback: CallbackQuery):
     product_id = int(callback.data.split("_")[1])
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("""SELECT p.*, b.name as brand_name, c.name as cat_name
             FROM products p
             LEFT JOIN brands b ON p.brand_id=b.id
             LEFT JOIN categories c ON p.category_id=c.id
             WHERE p.id=?""", (product_id,))
-        p = dict(await cur.fetchone())
+        p = await cur.fetchone()
 
     in_stock = p["stock_qty"] > 0
     stock_text = f"✅ В наявності: {p['stock_qty']} шт" if in_stock else "❌ Немає в наявності"
@@ -99,7 +99,7 @@ async def change_qty(callback: CallbackQuery):
     qty = int(parts[3])
 
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("SELECT stock_qty FROM products WHERE id=?", (product_id,))
         p = await cur.fetchone()
     max_qty = p["stock_qty"]

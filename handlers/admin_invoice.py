@@ -7,7 +7,7 @@ from utils.states import InvoiceStates
 from utils.helpers import generate_invoice_number
 from utils.pdf_generator import generate_invoice_pdf
 from datetime import date
-import aiosqlite
+
 
 router = Router()
 
@@ -49,13 +49,13 @@ async def _generate_and_send_invoice(message, order_id: int, data: dict):
     today = date.today().strftime("%d.%m.%Y")
 
     async with get_db() as db:
-        db.row_factory = aiosqlite.Row
+        db.row_factory = "dict"
         cur = await db.execute("""SELECT o.*, u.first_name, u.last_name, u.phone, u.email, u.company_id
             FROM orders o JOIN users u ON o.user_id=u.id WHERE o.id=?""", (order_id,))
-        order = dict(await cur.fetchone())
+        order = await cur.fetchone()
         cur2 = await db.execute("""SELECT oi.*, p.name FROM order_items oi
             JOIN products p ON oi.product_id=p.id WHERE oi.order_id=?""", (order_id,))
-        items = [dict(r) for r in await cur2.fetchall()]
+        items = await cur2.fetchall()
         cur3 = await db.execute("SELECT * FROM fop_settings WHERE id=1")
         fop = dict(await cur3.fetchone())
         buyer = {"name": f"{order['first_name']} {order['last_name']}", "edrpou": "", "iban": "", "address": "", "phone": order.get("phone","")}
