@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from aiohttp import web
 from dotenv import load_dotenv
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -11,6 +12,21 @@ from handlers import admin_orders, admin_products, admin_clients, admin_settings
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
+
+# Простий HTTP сервер щоб Render думав що сервіс живий
+async def health(request):
+    return web.Response(text="SuperCRM Bot is running!")
+
+async def start_web():
+    app = web.Application()
+    app.router.add_get("/", health)
+    app.router.add_get("/health", health)
+    port = int(os.getenv("PORT", 8080))
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    logger.info(f"✅ HTTP сервер запущено на порту {port}")
 
 async def main():
     token = os.getenv("BOT_TOKEN")
@@ -23,7 +39,6 @@ async def main():
     bot = Bot(token=token)
     dp = Dispatcher(storage=MemoryStorage())
 
-    # Реєструємо всі роутери
     dp.include_router(register.router)
     dp.include_router(catalog.router)
     dp.include_router(cart.router)
@@ -35,6 +50,8 @@ async def main():
     dp.include_router(admin_settings.router)
     dp.include_router(admin_invoice.router)
 
+    # Запускаємо HTTP сервер і бота одночасно
+    await start_web()
     logger.info("🚀 SuperCRM Bot запущено!")
     await dp.start_polling(bot, skip_updates=True)
 
