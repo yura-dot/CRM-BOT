@@ -43,9 +43,9 @@ async def filter_orders(callback: CallbackQuery):
 
     if not orders:
         try:
-        await callback.message.edit_text("📭 Замовлень не знайдено.", reply_markup=orders_filter_kb())
-    except TelegramBadRequest:
-        pass
+            await callback.message.edit_text("📭 Замовлень не знайдено.", reply_markup=orders_filter_kb())
+        except TelegramBadRequest:
+            pass
         return
 
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
