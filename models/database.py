@@ -19,7 +19,6 @@ def _make_connection():
 
 
 class Row(dict):
-    """dict-підклас що підтримує row["key"] і row.key"""
     def __getattr__(self, item):
         try:
             return self[item]
@@ -60,7 +59,7 @@ class AsyncCursor:
 class AsyncDB:
     def __init__(self, conn):
         self._conn = conn
-        self.row_factory = None  # сумісність зі старим кодом (ігнорується)
+        self.row_factory = None
 
     async def execute(self, sql, params=()):
         loop = asyncio.get_event_loop()
@@ -137,7 +136,7 @@ CREATE TABLE IF NOT EXISTS fop_settings (
     bank_name TEXT,
     legal_address TEXT,
     phone TEXT,
-    payment_template TEXT DEFAULT 'Оплата за замовленням'
+    payment_template TEXT DEFAULT 'Оплата за товар згідно рахунку {invoice_number} від {invoice_date}'
 );
 CREATE TABLE IF NOT EXISTS brands (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -172,6 +171,9 @@ CREATE TABLE IF NOT EXISTS orders (
     status TEXT DEFAULT 'new',
     total_amount REAL DEFAULT 0,
     comment TEXT,
+    delivery_type TEXT DEFAULT 'pickup',
+    delivery_address TEXT,
+    delivery_date TEXT,
     np_city TEXT,
     np_branch TEXT,
     np_recipient TEXT,
@@ -199,19 +201,28 @@ CREATE TABLE IF NOT EXISTS invoices (
 );
 """
 
+# ALTER TABLE міграції для існуючих БД
+_MIGRATIONS = [
+    "ALTER TABLE orders ADD COLUMN delivery_type TEXT DEFAULT 'pickup'",
+    "ALTER TABLE orders ADD COLUMN delivery_address TEXT",
+    "ALTER TABLE orders ADD COLUMN delivery_date TEXT",
+    "ALTER TABLE orders ADD COLUMN np_city TEXT",
+    "ALTER TABLE orders ADD COLUMN np_branch TEXT",
+    "ALTER TABLE orders ADD COLUMN np_recipient TEXT",
+]
+
 
 async def init_db():
-    loop = asyncio.get_event_loop()
-    conn = await loop.run_in_executor(None, _make_connection)
-    try:
-        stmts = [s.strip() for s in _SCHEMA.split(";") if s.strip()]
-        for stmt in stmts:
-            await loop.run_in_executor(None, lambda s=stmt: conn.execute(s))
-        # INSERT OR IGNORE для fop_settings
-        await loop.run_in_executor(
-            None, lambda: conn.execute("INSERT OR IGNORE INTO fop_settings (id) VALUES (1)")
-        )
-        await loop.run_in_executor(None, conn.commit)
-    finally:
-        await loop.run_in_executor(None, conn.close)
-    print("✅ Database initialized")
+    async with get_db() as db:
+        for stmt in _SCHEMA.strip().split(";"):
+            stmt = stmt.strip()
+            if stmt:
+                await db.execute(stmt)
+        await db.commit()
+        # Міграції (ігноруємо помилку якщо колонка вже є)
+        for migration in _MIGRATIONS:
+            try:
+                await db.execute(migration)
+                await db.commit()
+            except Exception:
+                pass

@@ -64,3 +64,12 @@ class EditProductStates(StatesGroup):
 
 class StockUpdateStates(StatesGroup):
     qty = State()
+
+# Стейти для вибору доставки під час оформлення замовлення
+class DeliveryStates(StatesGroup):
+    choose_type = State()       # вибір типу доставки
+    nova_poshta_city = State()  # місто НП
+    nova_poshta_branch = State()# відділення НП
+    nova_poshta_recipient = State() # отримувач НП
+    taxi_address = State()      # адреса таксі
+    taxi_datetime = State()     # дата/час таксі

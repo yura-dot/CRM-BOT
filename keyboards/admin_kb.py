@@ -12,31 +12,53 @@ def orders_filter_kb():
         [InlineKeyboardButton(text="🔵 Нові", callback_data="admin_orders_new"),
          InlineKeyboardButton(text="🟠 В роботі", callback_data="admin_orders_in_progress")],
         [InlineKeyboardButton(text="🟣 Доставка", callback_data="admin_orders_delivery"),
-         InlineKeyboardButton(text="🟢 Виконані", callback_data="admin_orders_completed")],
-        [InlineKeyboardButton(text="📄 Запит рахунку", callback_data="admin_orders_invoice_req")],
+         InlineKeyboardButton(text="💚 Оплачені", callback_data="admin_orders_paid")],
+        [InlineKeyboardButton(text="🟢 Виконані", callback_data="admin_orders_completed"),
+         InlineKeyboardButton(text="📄 Запит рахунку", callback_data="admin_orders_invoice_req")],
         [InlineKeyboardButton(text="📋 Всі", callback_data="admin_orders_all")],
     ])
 
-def order_status_kb(order_id: int, current_status: str):
+def order_status_kb(order_id: int, current_status: str, has_invoice: bool = False):
     statuses = [
-        ("new", "🔵 Новий"),
+        ("new",         "🔵 Новий"),
         ("in_progress", "🟠 В роботі"),
-        ("delivery", "🟣 Доставка"),
-        ("completed", "🟢 Виконаний"),
+        ("delivery",    "🟣 Доставка"),
+        ("paid",        "💚 Оплачений"),
+        ("completed",   "🟢 Виконаний"),
     ]
     buttons = []
     row = []
     for s_key, s_label in statuses:
         marker = "◉ " if s_key == current_status else ""
-        row.append(InlineKeyboardButton(text=f"{marker}{s_label}", callback_data=f"set_status_{order_id}_{s_key}"))
+        row.append(InlineKeyboardButton(
+            text=f"{marker}{s_label}",
+            callback_data=f"set_status_{order_id}_{s_key}"
+        ))
         if len(row) == 2:
             buttons.append(row)
             row = []
     if row:
         buttons.append(row)
-    buttons.append([InlineKeyboardButton(text="🧾 Виставити рахунок", callback_data=f"create_invoice_{order_id}")])
-    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_orders_all")])
+
+    # Рахунок: виставити або переглянути
+    if has_invoice:
+        buttons.append([
+            InlineKeyboardButton(text="🧾 Переглянути рахунок", callback_data=f"admin_view_invoice_{order_id}"),
+        ])
+    else:
+        buttons.append([InlineKeyboardButton(text="🧾 Виставити рахунок", callback_data=f"create_invoice_{order_id}")])
+
+    buttons.append([
+        InlineKeyboardButton(text="🗑 Видалити замовлення", callback_data=f"admin_delete_order_{order_id}"),
+        InlineKeyboardButton(text="◀️ Назад", callback_data="admin_orders_all"),
+    ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+def confirm_delete_order_kb(order_id: int):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Так, видалити", callback_data=f"admin_delete_order_confirm_{order_id}")],
+        [InlineKeyboardButton(text="◀️ Скасувати", callback_data=f"admin_order_{order_id}")],
+    ])
 
 def products_admin_kb(products: list):
     buttons = []
@@ -86,37 +108,38 @@ def settings_kb():
         [InlineKeyboardButton(text="📂 Категорії", callback_data="admin_categories")],
     ])
 
-def companies_kb(companies: list):
-    buttons = [[InlineKeyboardButton(text=f"🏢 {c['name']} — {c['city']}", callback_data=f"co_{c['id']}")] for c in companies]
+def invoice_status_kb(inv_id: int):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📤 Позначити відправленим", callback_data=f"inv_sent_{inv_id}")],
+        [InlineKeyboardButton(text="✅ Позначити оплаченим", callback_data=f"inv_paid_{inv_id}")],
+    ])
+
+def fop_settings_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✏️ Редагувати реквізити", callback_data="fop_edit")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="settings")],
+    ])
+
+def companies_list_kb(companies: list):
+    buttons = [[InlineKeyboardButton(text=f"🏢 {c['name']}", callback_data=f"co_{c['id']}")] for c in companies]
     buttons.append([InlineKeyboardButton(text="➕ Додати компанію", callback_data="add_company")])
-    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_settings")])
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="settings")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def brands_kb(brands: list):
+def company_detail_kb(co_id: int):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✏️ Редагувати", callback_data=f"edit_co_{co_id}")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_companies")],
+    ])
+
+def brands_list_kb(brands: list):
     buttons = [[InlineKeyboardButton(text=f"🏷 {b['name']}", callback_data=f"brand_{b['id']}")] for b in brands]
     buttons.append([InlineKeyboardButton(text="➕ Додати бренд", callback_data="add_brand")])
-    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_settings")])
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="settings")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
-def categories_kb(cats: list):
-    buttons = [[InlineKeyboardButton(text=f"📂 {c['name']}", callback_data=f"category_{c['id']}")] for c in cats]
+def categories_list_kb(cats: list):
+    buttons = [[InlineKeyboardButton(text=f"📂 {c['name']}", callback_data=f"catadm_{c['id']}")] for c in cats]
     buttons.append([InlineKeyboardButton(text="➕ Додати категорію", callback_data="add_category")])
-    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_settings")])
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="settings")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
-
-def select_brand_kb(brands: list):
-    buttons = [[InlineKeyboardButton(text=b["name"], callback_data=f"sel_brand_{b['id']}")] for b in brands]
-    buttons.append([InlineKeyboardButton(text="⏭ Пропустити", callback_data="sel_brand_0")])
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
-
-def select_category_kb(cats: list):
-    buttons = [[InlineKeyboardButton(text=c["name"], callback_data=f"sel_cat_{c['id']}")] for c in cats]
-    buttons.append([InlineKeyboardButton(text="⏭ Пропустити", callback_data="sel_cat_0")])
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
-
-def invoice_status_kb(invoice_id: int):
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📤 Відправлений клієнту", callback_data=f"inv_sent_{invoice_id}")],
-        [InlineKeyboardButton(text="✅ Оплачений", callback_data=f"inv_paid_{invoice_id}")],
-        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_orders_all")],
-    ])

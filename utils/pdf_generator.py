@@ -180,3 +180,112 @@ def generate_invoice_pdf(data: dict) -> bytes:
 
     doc.build(story)
     return buffer.getvalue()
+
+
+def generate_expense_pdf(data: dict) -> bytes:
+    """Видаткова накладна — генерується при статусі 'оплачений'"""
+    fonts_ok = ensure_fonts()
+    font_name = "DejaVu" if fonts_ok else "Helvetica"
+    font_bold = "DejaVu-Bold" if fonts_ok else "Helvetica-Bold"
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        rightMargin=15*mm, leftMargin=15*mm,
+        topMargin=15*mm, bottomMargin=15*mm
+    )
+
+    normal = ParagraphStyle("exp_normal", fontName=font_name, fontSize=9, leading=13)
+    bold   = ParagraphStyle("exp_bold",   fontName=font_bold, fontSize=9, leading=13)
+    title  = ParagraphStyle("exp_title",  fontName=font_bold, fontSize=13, leading=17, alignment=TA_CENTER)
+    center = ParagraphStyle("exp_center", fontName=font_name, fontSize=9, leading=13, alignment=TA_CENTER)
+    right  = ParagraphStyle("exp_right",  fontName=font_name, fontSize=9, leading=13, alignment=TA_RIGHT)
+
+    seller = data.get("seller", {})
+    buyer  = data.get("buyer", {})
+    items  = data.get("items", [])
+    total  = data.get("total", 0)
+
+    story = []
+
+    story.append(Paragraph(f"ВИДАТКОВА НАКЛАДНА № {data.get('expense_number','')}", title))
+    story.append(Paragraph(f"Дата: {data.get('expense_date','')}", center))
+    story.append(Spacer(1, 8*mm))
+
+    def make_party(header, d):
+        lines = [Paragraph(f"<b>{header}</b>", bold), Paragraph(d.get("name","—"), normal)]
+        if d.get("edrpou"):
+            lines.append(Paragraph(f"ЄДРПОУ/ІПН: {d['edrpou']}", normal))
+        if d.get("phone"):
+            lines.append(Paragraph(f"Тел: {d['phone']}", normal))
+        return lines
+
+    parties = Table(
+        [[make_party("ПОСТАЧАЛЬНИК", seller), make_party("ОТРИМУВАЧ", buyer)]],
+        colWidths=[90*mm, 90*mm]
+    )
+    parties.setStyle(TableStyle([
+        ("BOX",        (0,0), (-1,-1), 0.5, colors.grey),
+        ("INNERGRID",  (0,0), (-1,-1), 0.5, colors.grey),
+        ("VALIGN",     (0,0), (-1,-1), "TOP"),
+        ("PADDING",    (0,0), (-1,-1), 6),
+        ("BACKGROUND", (0,0), (0,0), colors.HexColor("#f0f4f8")),
+        ("BACKGROUND", (1,0), (1,0), colors.HexColor("#f8f8f8")),
+    ]))
+    story.append(parties)
+    story.append(Spacer(1, 6*mm))
+
+    rows = [[
+        Paragraph("№",                           bold),
+        Paragraph("Найменування товару/послуги", bold),
+        Paragraph("К-ть",                        bold),
+        Paragraph("Ціна, грн",                   bold),
+        Paragraph("Сума, грн",                   bold),
+    ]]
+    for i, item in enumerate(items, 1):
+        rows.append([
+            Paragraph(str(i),                              normal),
+            Paragraph(str(item.get("name","")),            normal),
+            Paragraph(str(item.get("qty",1)),              center),
+            Paragraph(f"{float(item.get('price',0)):.2f}",    right),
+            Paragraph(f"{float(item.get('subtotal',0)):.2f}",  right),
+        ])
+
+    items_tbl = Table(rows, colWidths=[10*mm, 90*mm, 18*mm, 28*mm, 28*mm])
+    items_tbl.setStyle(TableStyle([
+        ("BOX",            (0,0), (-1,-1), 0.5, colors.grey),
+        ("INNERGRID",      (0,0), (-1,-1), 0.3, colors.lightgrey),
+        ("BACKGROUND",     (0,0), (-1,0),  colors.HexColor("#1a5276")),
+        ("TEXTCOLOR",      (0,0), (-1,0),  colors.white),
+        ("FONTNAME",       (0,0), (-1,0),  font_bold),
+        ("ALIGN",          (2,0), (-1,-1), "RIGHT"),
+        ("ROWBACKGROUNDS", (0,1), (-1,-1), [colors.white, colors.HexColor("#f0f8ff")]),
+        ("PADDING",        (0,0), (-1,-1), 5),
+    ]))
+    story.append(items_tbl)
+    story.append(Spacer(1, 4*mm))
+
+    total_tbl = Table(
+        [[Paragraph("ВСЬОГО ВІДПУЩЕНО:", bold),
+          Paragraph(f"<b>{total:.2f} грн</b>", bold)]],
+        colWidths=[128*mm, 46*mm]
+    )
+    total_tbl.setStyle(TableStyle([
+        ("BOX",        (0,0), (-1,-1), 0.5, colors.grey),
+        ("ALIGN",      (1,0), (1,0),   "RIGHT"),
+        ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#eaf2fb")),
+        ("PADDING",    (0,0), (-1,-1), 6),
+    ]))
+    story.append(total_tbl)
+    story.append(Spacer(1, 10*mm))
+
+    # Підписи
+    sign_tbl = Table(
+        [[Paragraph("Відпустив: __________________", normal),
+          Paragraph("Отримав: __________________", normal)]],
+        colWidths=[90*mm, 90*mm]
+    )
+    story.append(sign_tbl)
+
+    doc.build(story)
+    return buffer.getvalue()
