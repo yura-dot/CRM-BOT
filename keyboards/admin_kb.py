@@ -1,11 +1,13 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 
+
 def admin_menu_kb():
     return ReplyKeyboardMarkup(keyboard=[
         [KeyboardButton(text="📋 Замовлення"), KeyboardButton(text="📦 Товари")],
         [KeyboardButton(text="🏢 Компанії"), KeyboardButton(text="👥 Клієнти")],
         [KeyboardButton(text="⚙️ Налаштування")],
     ], resize_keyboard=True)
+
 
 def orders_filter_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -17,6 +19,7 @@ def orders_filter_kb():
          InlineKeyboardButton(text="📄 Запит рахунку", callback_data="admin_orders_invoice_req")],
         [InlineKeyboardButton(text="📋 Всі", callback_data="admin_orders_all")],
     ])
+
 
 def order_status_kb(order_id: int, current_status: str, has_invoice: bool = False):
     statuses = [
@@ -40,7 +43,6 @@ def order_status_kb(order_id: int, current_status: str, has_invoice: bool = Fals
     if row:
         buttons.append(row)
 
-    # Рахунок: виставити або переглянути
     if has_invoice:
         buttons.append([
             InlineKeyboardButton(text="🧾 Переглянути рахунок", callback_data=f"admin_view_invoice_{order_id}"),
@@ -54,11 +56,13 @@ def order_status_kb(order_id: int, current_status: str, has_invoice: bool = Fals
     ])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
+
 def confirm_delete_order_kb(order_id: int):
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✅ Так, видалити", callback_data=f"admin_delete_order_confirm_{order_id}")],
         [InlineKeyboardButton(text="◀️ Скасувати", callback_data=f"admin_order_{order_id}")],
     ])
+
 
 def products_admin_kb(products: list):
     buttons = []
@@ -71,6 +75,7 @@ def products_admin_kb(products: list):
     buttons.append([InlineKeyboardButton(text="➕ Додати товар", callback_data="add_product")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
+
 def product_admin_detail_kb(product_id: int):
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✏️ Редагувати", callback_data=f"edit_prod_{product_id}")],
@@ -78,6 +83,29 @@ def product_admin_detail_kb(product_id: int):
         [InlineKeyboardButton(text="🗑 Видалити", callback_data=f"del_prod_{product_id}")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_products")],
     ])
+
+
+def select_brand_kb(brands: list):
+    buttons = []
+    for b in brands:
+        buttons.append([InlineKeyboardButton(
+            text=f"🏷 {b['name']}",
+            callback_data=f"sel_brand_{b['id']}"
+        )])
+    buttons.append([InlineKeyboardButton(text="⏭ Пропустити", callback_data="sel_brand_0")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def select_category_kb(cats: list):
+    buttons = []
+    for c in cats:
+        buttons.append([InlineKeyboardButton(
+            text=f"📂 {c['name']}",
+            callback_data=f"sel_cat_{c['id']}"
+        )])
+    buttons.append([InlineKeyboardButton(text="⏭ Пропустити", callback_data="sel_cat_0")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
 
 def clients_admin_kb(users: list):
     buttons = []
@@ -89,6 +117,7 @@ def clients_admin_kb(users: list):
         )])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
+
 def client_admin_detail_kb(user_id: int, is_approved: bool, companies: list):
     buttons = []
     if is_approved:
@@ -96,9 +125,13 @@ def client_admin_detail_kb(user_id: int, is_approved: bool, companies: list):
     else:
         buttons.append([InlineKeyboardButton(text="✅ Підтвердити клієнта", callback_data=f"approve_{user_id}")])
     for c in companies:
-        buttons.append([InlineKeyboardButton(text=f"🏢 Призначити: {c['name']}", callback_data=f"assign_co_{user_id}_{c['id']}")])
+        buttons.append([InlineKeyboardButton(
+            text=f"🏢 Призначити: {c['name']}",
+            callback_data=f"assign_co_{user_id}_{c['id']}"
+        )])
     buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_clients")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
 
 def settings_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -108,11 +141,13 @@ def settings_kb():
         [InlineKeyboardButton(text="📂 Категорії", callback_data="admin_categories")],
     ])
 
+
 def invoice_status_kb(inv_id: int):
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📤 Позначити відправленим", callback_data=f"inv_sent_{inv_id}")],
         [InlineKeyboardButton(text="✅ Позначити оплаченим", callback_data=f"inv_paid_{inv_id}")],
     ])
+
 
 def fop_settings_kb():
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -120,11 +155,13 @@ def fop_settings_kb():
         [InlineKeyboardButton(text="◀️ Назад", callback_data="settings")],
     ])
 
+
 def companies_list_kb(companies: list):
     buttons = [[InlineKeyboardButton(text=f"🏢 {c['name']}", callback_data=f"co_{c['id']}")] for c in companies]
     buttons.append([InlineKeyboardButton(text="➕ Додати компанію", callback_data="add_company")])
     buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="settings")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
 
 def company_detail_kb(co_id: int):
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -132,14 +169,43 @@ def company_detail_kb(co_id: int):
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_companies")],
     ])
 
+
 def brands_list_kb(brands: list):
     buttons = [[InlineKeyboardButton(text=f"🏷 {b['name']}", callback_data=f"brand_{b['id']}")] for b in brands]
     buttons.append([InlineKeyboardButton(text="➕ Додати бренд", callback_data="add_brand")])
     buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="settings")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
+
 def categories_list_kb(cats: list):
     buttons = [[InlineKeyboardButton(text=f"📂 {c['name']}", callback_data=f"catadm_{c['id']}")] for c in cats]
+    buttons.append([InlineKeyboardButton(text="➕ Додати категорію", callback_data="add_category")])
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="settings")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def companies_kb(companies: list):
+    buttons = []
+    for c in companies:
+        buttons.append([InlineKeyboardButton(text=f"🏢 {c['name']}", callback_data=f"co_{c['id']}")])
+    buttons.append([InlineKeyboardButton(text="➕ Додати компанію", callback_data="add_company")])
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="settings")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def brands_kb(brands: list):
+    buttons = []
+    for b in brands:
+        buttons.append([InlineKeyboardButton(text=f"🏷 {b['name']}", callback_data=f"brand_{b['id']}")])
+    buttons.append([InlineKeyboardButton(text="➕ Додати бренд", callback_data="add_brand")])
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="settings")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def categories_kb(cats: list):
+    buttons = []
+    for c in cats:
+        buttons.append([InlineKeyboardButton(text=f"📂 {c['name']}", callback_data=f"catadm_{c['id']}")])
     buttons.append([InlineKeyboardButton(text="➕ Додати категорію", callback_data="add_category")])
     buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="settings")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
