@@ -18,7 +18,6 @@ def profile_kb():
 @router.message(F.text == "👤 Профіль")
 async def show_profile(message: Message):
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("""SELECT u.*, co.name as co_name FROM users u
             LEFT JOIN companies co ON u.company_id=co.id WHERE u.telegram_id=?""", (message.from_user.id,))
         u = await cur.fetchone()
@@ -63,7 +62,6 @@ async def edit_phone(message: Message, state: FSMContext):
     data = await state.get_data()
     tg_id = message.from_user.id
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM users WHERE telegram_id=?", (tg_id,))
         current = await cur.fetchone()
         await db.execute("""UPDATE users SET first_name=?, last_name=?, phone=? WHERE telegram_id=?""",

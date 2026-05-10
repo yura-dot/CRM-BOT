@@ -3,7 +3,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.fsm.context import FSMContext
 from models.database import get_db
 from keyboards.admin_kb import products_admin_kb, product_admin_detail_kb, select_brand_kb, select_category_kb
-from utils.states import AddProductStates
+from utils.states import AddProductStates, EditProductStates, StockUpdateStates
 import os
 
 router = Router()
@@ -14,7 +14,6 @@ async def admin_products(message: Message):
     if message.from_user.id not in ADMIN_IDS:
         return
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM products WHERE is_active=1 ORDER BY name")
         products = await cur.fetchall()
     if not products:
@@ -30,7 +29,6 @@ async def admin_products(message: Message):
 @router.callback_query(F.data == "admin_products")
 async def cb_admin_products(callback: CallbackQuery):
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM products WHERE is_active=1 ORDER BY name")
         products = await cur.fetchall()
     await callback.message.edit_text(f"📦 <b>Товари ({len(products)})</b>:", parse_mode="HTML",
@@ -40,7 +38,6 @@ async def cb_admin_products(callback: CallbackQuery):
 async def admin_product_detail(callback: CallbackQuery):
     pid = int(callback.data.split("_")[2])
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("""SELECT p.*, b.name as brand_name, c.name as cat_name FROM products p
             LEFT JOIN brands b ON p.brand_id=b.id
             LEFT JOIN categories c ON p.category_id=c.id WHERE p.id=?""", (pid,))
@@ -143,7 +140,6 @@ async def ap_stock(message: Message, state: FSMContext):
         await message.answer("❌ Введіть ціле число:")
         return
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM brands ORDER BY name")
         brands = await cur.fetchall()
     if brands:
@@ -161,7 +157,6 @@ async def ap_brand(callback: CallbackQuery, state: FSMContext):
 
 async def _ask_category(message, state):
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM categories ORDER BY name")
         cats = await cur.fetchall()
     if cats:
@@ -197,14 +192,11 @@ async def update_stock_start(callback: CallbackQuery, state: FSMContext):
     pid = int(callback.data.split("_")[2])
     await state.update_data(stock_product_id=pid)
     await callback.message.answer("Введіть нову кількість на складі:")
-    from utils.states import AddProductStates
+    from utils.states import AddProductStates, EditProductStates, StockUpdateStates
     await state.set_state("stock_update")
 
-@router.message(F.text.regexp(r"^\d+$"), lambda m, state: state)
+@router.message(StockUpdateStates.qty)
 async def update_stock_value(message: Message, state: FSMContext):
-    current_state = await state.get_state()
-    if current_state != "stock_update":
-        return
     data = await state.get_data()
     pid = data.get("stock_product_id")
     if not pid:
@@ -224,3 +216,118 @@ async def delete_product(callback: CallbackQuery):
         await db.commit()
     await callback.answer("🗑 Товар видалено", show_alert=False)
     await cb_admin_products(callback)
+
+
+# ── Edit Product ──
+@router.callback_query(F.data.startswith("edit_prod_"))
+async def edit_product_start(callback: CallbackQuery, state: FSMContext):
+    prod_id = int(callback.data.split("_")[2])
+    async with get_db() as db:
+        cur = await db.execute("SELECT * FROM products WHERE id=?", (prod_id,))
+        p = await cur.fetchone()
+    if not p:
+        await callback.answer("Товар не знайдено", show_alert=True)
+        return
+
+    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+    text = (
+        f"✏️ <b>Редагування: {p['name']}</b>\n\n"
+        f"Оберіть поле для зміни:"
+    )
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📝 Назва", callback_data=f"epf_{prod_id}_name"),
+         InlineKeyboardButton(text="🔖 Артикул", callback_data=f"epf_{prod_id}_sku")],
+        [InlineKeyboardButton(text="📄 Опис", callback_data=f"epf_{prod_id}_description"),
+         InlineKeyboardButton(text="🧪 Склад", callback_data=f"epf_{prod_id}_ingredients")],
+        [InlineKeyboardButton(text="📦 Обʼєм", callback_data=f"epf_{prod_id}_volume"),
+         InlineKeyboardButton(text="💰 Ціна клієнта", callback_data=f"epf_{prod_id}_client_price")],
+        [InlineKeyboardButton(text="💵 Закупівельна", callback_data=f"epf_{prod_id}_purchase_price"),
+         InlineKeyboardButton(text="📊 Залишок", callback_data=f"epf_{prod_id}_stock_qty")],
+        [InlineKeyboardButton(text="💬 Коментар", callback_data=f"epf_{prod_id}_comment")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data=f"admin_prod_{prod_id}")],
+    ])
+    await callback.message.edit_text(text, parse_mode="HTML", reply_markup=kb)
+    await state.update_data(edit_prod_id=prod_id)
+
+
+@router.callback_query(F.data.startswith("epf_"))
+async def edit_product_field(callback: CallbackQuery, state: FSMContext):
+    parts = callback.data.split("_")
+    prod_id = int(parts[1])
+    field = "_".join(parts[2:])
+
+    field_labels = {
+        "name": "назву",
+        "sku": "артикул",
+        "description": "опис",
+        "ingredients": "склад товару",
+        "volume": "обʼєм",
+        "client_price": "ціну для клієнта (число)",
+        "purchase_price": "закупівельну ціну (число)",
+        "stock_qty": "кількість на складі (ціле число)",
+        "comment": "коментар",
+    }
+    label = field_labels.get(field, field)
+    await state.update_data(edit_prod_id=prod_id, edit_field=field)
+    await state.set_state(EditProductStates.value)
+    await callback.message.answer(
+        f"✏️ Введіть нове значення для поля <b>{label}</b>:\n"
+        f"(або /cancel щоб скасувати)",
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+
+@router.message(EditProductStates.value)
+async def edit_product_save(message: Message, state: FSMContext):
+    if message.text == "/cancel":
+        await state.clear()
+        await message.answer("❌ Редагування скасовано.")
+        return
+
+    data = await state.get_data()
+    prod_id = data.get("edit_prod_id")
+    field = data.get("edit_field")
+
+    allowed_fields = ["name", "sku", "description", "ingredients", "volume",
+                      "client_price", "purchase_price", "stock_qty", "comment"]
+    if field not in allowed_fields:
+        await state.clear()
+        return
+
+    value = message.text.strip()
+
+    # Числові поля — перевіряємо формат
+    if field in ("client_price", "purchase_price"):
+        try:
+            value = float(value.replace(",", "."))
+        except ValueError:
+            await message.answer("⚠️ Введіть числове значення (напр. 150.00)")
+            return
+    elif field == "stock_qty":
+        try:
+            value = int(value)
+        except ValueError:
+            await message.answer("⚠️ Введіть ціле число (напр. 10)")
+            return
+
+    async with get_db() as db:
+        await db.execute(f"UPDATE products SET {field}=? WHERE id=?", (value, prod_id))
+        await db.commit()
+
+    await state.clear()
+    await message.answer(f"✅ Поле оновлено успішно!")
+
+    # Показуємо оновлену картку товару
+    async with get_db() as db:
+        cur = await db.execute("SELECT * FROM products WHERE id=?", (prod_id,))
+        p = await cur.fetchone()
+
+    if p:
+        from keyboards.admin_kb import product_admin_detail_kb
+        text = (
+            f"📦 <b>{p['name']}</b> | {p.get('sku','')}\n"
+            f"💰 {p['client_price']} грн | 📊 {p.get('stock_qty', 0)} шт"
+        )
+        await message.answer(text, parse_mode="HTML",
+                             reply_markup=product_admin_detail_kb(prod_id))

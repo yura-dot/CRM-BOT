@@ -6,6 +6,7 @@ from utils.helpers import format_status
 import os
 
 router = Router()
+
 ADMIN_IDS = [int(x) for x in os.getenv("ADMIN_IDS", "").split(",") if x.strip()]
 
 @router.message(F.text == "📋 Замовлення")
@@ -28,7 +29,6 @@ async def filter_orders(callback: CallbackQuery):
     filter_key = status_map.get(callback.data)
 
     async with get_db() as db:
-        db.row_factory = "dict"
         if filter_key == "invoice_req":
             cur = await db.execute("""SELECT o.*, u.first_name, u.last_name FROM orders o
                 JOIN users u ON o.user_id=u.id WHERE o.invoice_requested=1 ORDER BY o.created_at DESC""")
@@ -66,7 +66,6 @@ async def show_filter(callback: CallbackQuery):
 async def admin_order_detail(callback: CallbackQuery):
     order_id = int(callback.data.split("_")[2])
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("""SELECT o.*, u.first_name, u.last_name, u.phone, u.email,
             co.name as co_name FROM orders o
             JOIN users u ON o.user_id=u.id
@@ -77,7 +76,14 @@ async def admin_order_detail(callback: CallbackQuery):
             JOIN products p ON oi.product_id=p.id WHERE oi.order_id=?""", (order_id,))
         items = await cur2.fetchall()
 
-    items_text = "\n".join([f"  • {i['name']} [{i['sku']}] × {i['quantity']} = {i['subtotal']:.2f} грн" for i in items])
+    if items:
+        items_text = "\n".join([
+            f"  • {i['name']} [{i['sku']}] × {i['quantity']} шт = {i['subtotal']:.2f} грн"
+            for i in items
+        ])
+        items_text = f"🛒 <b>Товари:</b>\n{items_text}"
+    else:
+        items_text = "🛒 <i>Товари не знайдені</i>"
     np_text = ""
     if order.get("np_city"):
         np_text = f"\n🚚 НП: {order['np_city']}, відд. {order.get('np_branch','—')}, {order.get('np_recipient','—')}"
@@ -98,12 +104,11 @@ async def admin_order_detail(callback: CallbackQuery):
 
 @router.callback_query(F.data.startswith("set_status_"))
 async def set_order_status(callback: CallbackQuery):
-    parts = callback.data.split("_")
+    parts = callback.data.split("_", 3)
     order_id = int(parts[2])
     new_status = parts[3]
 
     async with get_db() as db:
-        db.row_factory = "dict"
         await db.execute("UPDATE orders SET status=? WHERE id=?", (new_status, order_id))
         await db.commit()
         cur = await db.execute("""SELECT o.order_number, u.telegram_id, u.first_name FROM orders o

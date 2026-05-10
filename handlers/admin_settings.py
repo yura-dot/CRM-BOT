@@ -24,7 +24,6 @@ async def cb_admin_settings(callback: CallbackQuery):
 @router.callback_query(F.data == "fop_settings")
 async def show_fop_settings(callback: CallbackQuery):
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM fop_settings WHERE id=1")
         fop = await cur.fetchone()
     from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
@@ -96,7 +95,6 @@ async def fop_phone(message: Message, state: FSMContext):
 @router.callback_query(F.data == "admin_companies")
 async def admin_companies(callback: CallbackQuery):
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM companies ORDER BY name")
         companies = await cur.fetchall()
     await callback.message.edit_text("🏢 <b>Компанії</b>", parse_mode="HTML", reply_markup=companies_kb(companies))
@@ -171,7 +169,6 @@ async def co_phone(message: Message, state: FSMContext):
 @router.callback_query(F.data == "admin_brands")
 async def admin_brands(callback: CallbackQuery):
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM brands ORDER BY name")
         brands = await cur.fetchall()
     await callback.message.edit_text("🏷 <b>Бренди</b>", parse_mode="HTML", reply_markup=brands_kb(brands))
@@ -194,7 +191,6 @@ async def brand_name(message: Message, state: FSMContext):
 @router.callback_query(F.data == "admin_categories")
 async def admin_categories(callback: CallbackQuery):
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM categories ORDER BY name")
         cats = await cur.fetchall()
     await callback.message.edit_text("📂 <b>Категорії</b>", parse_mode="HTML", reply_markup=categories_kb(cats))

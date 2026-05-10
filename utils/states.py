@@ -57,3 +57,10 @@ class EditProfileStates(StatesGroup):
     np_city = State()
     np_branch = State()
     np_recipient = State()
+
+class EditProductStates(StatesGroup):
+    field = State()
+    value = State()
+
+class StockUpdateStates(StatesGroup):
+    qty = State()

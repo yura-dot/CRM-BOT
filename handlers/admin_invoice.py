@@ -49,7 +49,6 @@ async def _generate_and_send_invoice(message, order_id: int, data: dict):
     today = date.today().strftime("%d.%m.%Y")
 
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("""SELECT o.*, u.first_name, u.last_name, u.phone, u.email, u.company_id
             FROM orders o JOIN users u ON o.user_id=u.id WHERE o.id=?""", (order_id,))
         order = await cur.fetchone()
@@ -57,7 +56,7 @@ async def _generate_and_send_invoice(message, order_id: int, data: dict):
             JOIN products p ON oi.product_id=p.id WHERE oi.order_id=?""", (order_id,))
         items = await cur2.fetchall()
         cur3 = await db.execute("SELECT * FROM fop_settings WHERE id=1")
-        fop = dict(await cur3.fetchone())
+        fop = await cur3.fetchone() or {}
         buyer = {"name": f"{order['first_name']} {order['last_name']}", "edrpou": "", "iban": "", "address": "", "phone": order.get("phone","")}
         if order.get("company_id"):
             cur4 = await db.execute("SELECT * FROM companies WHERE id=?", (order["company_id"],))
@@ -66,14 +65,16 @@ async def _generate_and_send_invoice(message, order_id: int, data: dict):
                 co = dict(co)
                 buyer = {"name": co.get("display_name") or co["name"], "edrpou": co.get("edrpou",""), "iban": co.get("iban",""), "address": co.get("legal_address",""), "phone": co.get("phone","")}
         cur5 = await db.execute("SELECT telegram_id FROM users WHERE id=?", (order["user_id"],))
-        client_tg = (await cur5.fetchone())[0]
+        client_tg_row = await cur5.fetchone()
+        client_tg = client_tg_row["telegram_id"] if client_tg_row else None
 
         await db.execute("""INSERT INTO invoices (invoice_number,order_id,invoice_date,due_date,total_amount,status,notes)
             VALUES (?,?,?,?,?,'draft',?)""",
             (inv_number, order_id, today, data.get("due_date",""), order["total_amount"], data.get("notes","")))
         await db.commit()
         cur6 = await db.execute("SELECT id FROM invoices WHERE invoice_number=?", (inv_number,))
-        inv_id = (await cur6.fetchone())[0]
+        inv_row = await cur6.fetchone()
+        inv_id = inv_row["id"] if inv_row else None
 
     purpose = (fop.get("payment_template") or "Оплата за замовленням №{order_number}").replace("{order_number}", order["order_number"])
 
@@ -94,8 +95,9 @@ async def _generate_and_send_invoice(message, order_id: int, data: dict):
     await message.answer_document(pdf_file, caption=f"✅ Рахунок <b>#{inv_number}</b> створено!", parse_mode="HTML",
                                   reply_markup=invoice_status_kb(inv_id))
     try:
-        await message.bot.send_document(
-            client_tg, pdf_file,
+        if client_tg:
+            await message.bot.send_document(
+                client_tg, pdf_file,
             caption=f"🧾 <b>Рахунок на оплату №{inv_number}</b>\n\n"
                     f"💰 Сума: <b>{order['total_amount']:.2f} грн</b>\n"
                     f"🏦 IBAN: <code>{fop.get('iban','—')}</code>\n"

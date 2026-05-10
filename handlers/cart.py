@@ -17,7 +17,6 @@ async def add_to_cart(callback: CallbackQuery):
     tg_id = callback.from_user.id
 
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT name, client_price, stock_qty FROM products WHERE id=?", (product_id,))
         p = await cur.fetchone()
 
@@ -41,7 +40,6 @@ async def _render_cart(message_or_cb, tg_id, cart):
     items = []
     total = 0
     async with get_db() as db:
-        db.row_factory = "dict"
         for pid, qty in cart.items():
             cur = await db.execute("SELECT id, name, client_price FROM products WHERE id=?", (pid,))
             p = await cur.fetchone()
@@ -110,7 +108,6 @@ async def checkout(callback: CallbackQuery):
         return
 
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM users WHERE telegram_id=?", (tg_id,))
         user = await cur.fetchone()
         cur2 = await db.execute("SELECT * FROM fop_settings WHERE id=1")
@@ -123,7 +120,6 @@ async def checkout(callback: CallbackQuery):
     total = 0
     items_text = ""
     async with get_db() as db:
-        db.row_factory = "dict"
         for pid, qty in cart.items():
             cur = await db.execute("SELECT name, client_price FROM products WHERE id=?", (pid,))
             p = await cur.fetchone()
@@ -158,7 +154,6 @@ async def confirm_order(callback: CallbackQuery):
         return
 
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM users WHERE telegram_id=?", (tg_id,))
         user = await cur.fetchone()
         cur2 = await db.execute("SELECT * FROM fop_settings WHERE id=1")
@@ -168,7 +163,6 @@ async def confirm_order(callback: CallbackQuery):
     total = 0
     items_data = []
     async with get_db() as db:
-        db.row_factory = "dict"
         for pid, qty in cart.items():
             cur = await db.execute("SELECT name, client_price, stock_qty FROM products WHERE id=?", (pid,))
             p = await cur.fetchone()
@@ -183,7 +177,7 @@ async def confirm_order(callback: CallbackQuery):
              user.get("np_city",""), user.get("np_branch",""), user.get("np_recipient","")))
         await db.commit()
         cur = await db.execute("SELECT id FROM orders WHERE order_number=?", (order_number,))
-        order_id = (await cur.fetchone())[0]
+        order_id = (await cur.fetchone())["id"]
         for item in items_data:
             await db.execute("INSERT INTO order_items (order_id,product_id,quantity,unit_price,subtotal) VALUES (?,?,?,?,?)",
                 (order_id, item["pid"], item["qty"], item["price"], item["sub"]))

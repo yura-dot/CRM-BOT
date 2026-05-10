@@ -10,7 +10,6 @@ router = Router()
 @router.message(F.text == "📦 Мої замовлення")
 async def my_orders(message: Message):
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT id FROM users WHERE telegram_id=?", (message.from_user.id,))
         u = await cur.fetchone()
         if not u:
@@ -27,7 +26,6 @@ async def my_orders(message: Message):
 @router.callback_query(F.data == "my_orders")
 async def cb_my_orders(callback: CallbackQuery):
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT id FROM users WHERE telegram_id=?", (callback.from_user.id,))
         u = await cur.fetchone()
         cur2 = await db.execute("SELECT * FROM orders WHERE user_id=? ORDER BY created_at DESC", (u["id"],))
@@ -38,7 +36,6 @@ async def cb_my_orders(callback: CallbackQuery):
 async def order_detail(callback: CallbackQuery):
     order_id = int(callback.data.split("_")[1])
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM orders WHERE id=?", (order_id,))
         order = await cur.fetchone()
         cur2 = await db.execute("""SELECT oi.*, p.name FROM order_items oi
@@ -92,7 +89,6 @@ async def request_invoice(callback: CallbackQuery):
 async def view_invoice(callback: CallbackQuery):
     order_id = int(callback.data.split("_")[2])
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM invoices WHERE order_id=?", (order_id,))
         inv = await cur.fetchone()
         if not inv:
@@ -105,9 +101,9 @@ async def view_invoice(callback: CallbackQuery):
             JOIN products p ON oi.product_id=p.id WHERE oi.order_id=?""", (order_id,))
         items = await cur3.fetchall()
         cur4 = await db.execute("SELECT * FROM fop_settings WHERE id=1")
-        fop = dict(await cur4.fetchone())
+        fop = await cur4.fetchone() or {}
         cur5 = await db.execute("SELECT u.*, co.name as co_name, co.iban as co_iban, co.edrpou as co_edrpou FROM users u LEFT JOIN companies co ON u.company_id=co.id WHERE u.id=?", (order["user_id"],))
-        client = dict(await cur5.fetchone())
+        client = await cur5.fetchone() or {}
 
     items_text = "\n".join([f"  {i+1}. {items[i]['name']} × {items[i]['quantity']} шт × {items[i]['unit_price']:.2f} = {items[i]['subtotal']:.2f} грн" for i in range(len(items))])
     text = (

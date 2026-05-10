@@ -8,7 +8,6 @@ router = Router()
 
 async def get_approved_user(tg_id):
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM users WHERE telegram_id=? AND is_approved=1", (tg_id,))
         return await cur.fetchone()
 
@@ -19,7 +18,6 @@ async def show_catalog(message: Message):
         await message.answer("⛔ Доступ закрито. Очікуйте підтвердження адміністратора.")
         return
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM categories ORDER BY name")
         cats = await cur.fetchall()
     if not cats:
@@ -30,7 +28,6 @@ async def show_catalog(message: Message):
 @router.callback_query(F.data == "catalog")
 async def cb_catalog(callback: CallbackQuery):
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM categories ORDER BY name")
         cats = await cur.fetchall()
     await callback.message.edit_text("📂 Оберіть категорію:", reply_markup=catalog_categories_kb(cats))
@@ -39,7 +36,6 @@ async def cb_catalog(callback: CallbackQuery):
 async def show_category_products(callback: CallbackQuery):
     cat_id = callback.data.split("_")[1]
     async with get_db() as db:
-        db.row_factory = "dict"
         if cat_id == "all":
             cur = await db.execute("SELECT * FROM products WHERE is_active=1 ORDER BY name")
         else:
@@ -56,7 +52,6 @@ async def show_category_products(callback: CallbackQuery):
 async def show_product_detail(callback: CallbackQuery):
     product_id = int(callback.data.split("_")[1])
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("""SELECT p.*, b.name as brand_name, c.name as cat_name
             FROM products p
             LEFT JOIN brands b ON p.brand_id=b.id
@@ -99,7 +94,6 @@ async def change_qty(callback: CallbackQuery):
     qty = int(parts[3])
 
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT stock_qty FROM products WHERE id=?", (product_id,))
         p = await cur.fetchone()
     max_qty = p["stock_qty"]

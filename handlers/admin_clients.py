@@ -12,7 +12,6 @@ async def admin_clients(message: Message):
     if message.from_user.id not in ADMIN_IDS:
         return
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM users WHERE role='client' ORDER BY is_approved, first_name")
         users = await cur.fetchall()
     if not users:
@@ -27,7 +26,6 @@ async def admin_clients(message: Message):
 @router.callback_query(F.data == "admin_clients")
 async def cb_admin_clients(callback: CallbackQuery):
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM users WHERE role='client' ORDER BY is_approved, first_name")
         users = await cur.fetchall()
     await callback.message.edit_text(f"👥 <b>Клієнти ({len(users)})</b>", parse_mode="HTML",
@@ -37,7 +35,6 @@ async def cb_admin_clients(callback: CallbackQuery):
 async def admin_client_detail(callback: CallbackQuery):
     uid = int(callback.data.split("_")[2])
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("""SELECT u.*, co.name as co_name FROM users u
             LEFT JOIN companies co ON u.company_id=co.id WHERE u.id=?""", (uid,))
         u = await cur.fetchone()
@@ -59,7 +56,6 @@ async def admin_client_detail(callback: CallbackQuery):
 async def approve_client(callback: CallbackQuery):
     uid = int(callback.data.split("_")[1])
     async with get_db() as db:
-        db.row_factory = "dict"
         await db.execute("UPDATE users SET is_approved=1 WHERE id=?", (uid,))
         await db.commit()
         cur = await db.execute("SELECT telegram_id, first_name FROM users WHERE id=?", (uid,))
@@ -103,7 +99,6 @@ async def admin_companies_msg(message: Message):
         return
     from keyboards.admin_kb import companies_kb
     async with get_db() as db:
-        db.row_factory = "dict"
         cur = await db.execute("SELECT * FROM companies ORDER BY name")
         companies = await cur.fetchall()
     if not companies:
